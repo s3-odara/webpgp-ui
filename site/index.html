@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
+    <title>PGP Encrypt Only</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">OpenPGP Encrypt Only</p>
+        <h1>s3-odaraに暗号化するページ</h1>
+        <p class="lead">ここで暗号化したメッセージをコピーして適当に送信してください。</p>
+      </header>
+
+      <section class="panel">
+        <div class="meta">
+          <div>
+            <div class="label">Fingerprint</div>
+            <div id="fingerprint" class="mono">読み込み中...</div>
+          </div>
+          <div>
+            <div class="label">OpenPGP.js</div>
+            <div id="openpgp-version" class="mono">-</div>
+          </div>
+        </div>
+        <div id="error" class="error" role="alert" aria-live="polite"></div>
+
+        <label class="field">
+          <span>平文</span>
+          <textarea id="plaintext" rows="10" placeholder="ここに暗号化したいテキストを入力してください"></textarea>
+        </label>
+        <div class="actions">
+          <button id="encrypt" type="button">暗号化</button>
+        </div>
+
+        <label class="field">
+          <span>暗号化結果（armored）</span>
+          <textarea id="ciphertext" rows="10" readonly></textarea>
+        </label>
+        <div class="actions">
+          <button id="copy" type="button">コピー</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.mjs"></script>
+  </body>
+</html>

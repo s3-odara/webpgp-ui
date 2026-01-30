@@ -1,0 +1,102 @@
+name: Weekly build and deploy
+
+on:
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Fetch latest openpgpjs release tag
+        id: release
+        run: |
+          set -euo pipefail
+          tag=$(curl -sL https://api.github.com/repos/openpgpjs/openpgpjs/releases/latest | jq -r .tag_name)
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "Failed to resolve latest tag" >&2
+            exit 1
+          fi
+          ver=${tag#v}
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Download source and build bundle
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release.outputs.tag }}"
+          curl -fL "https://github.com/openpgpjs/openpgpjs/archive/refs/tags/${tag}.tar.gz" -o openpgpjs.tar.gz
+          tar -xzf openpgpjs.tar.gz
+          src_dir=$(ls -d openpgpjs-*)
+          cd "$src_dir"
+          npm install
+          npm audit signatures
+          npm test
+          cd ..
+          mkdir -p build_artifact
+          if [ ! -f "$src_dir/dist/openpgp.min.mjs" ]; then
+            echo "dist/openpgp.min.mjs not found after build" >&2
+            exit 1
+          fi
+          cp "$src_dir/dist/openpgp.min.mjs" build_artifact/openpgp.min.mjs
+          printf '%s\n' "${{ steps.release.outputs.version }}" > build_artifact/openpgp.version.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openpgp-dist
+          path: |
+            build_artifact/openpgp.min.mjs
+            build_artifact/openpgp.version.txt
+          if-no-files-found: error
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openpgp-dist
+          path: build_artifact
+
+      - name: Update vendor bundle
+        run: |
+          set -euo pipefail
+          mkdir -p site/vendor
+          cp build_artifact/openpgp.min.mjs site/vendor/openpgp.min.mjs
+          cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
+
+      - name: Sync to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          set -euo pipefail
+          aws s3 sync site "s3://$R2_BUCKET" --endpoint-url "$R2_ENDPOINT" --delete
