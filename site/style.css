@@ -97,7 +97,6 @@ textarea {
   border: 1px solid var(--border);
   padding: 12px 14px;
   font-family: monospace;
-  font-size: 0.95rem;
   background: var(--area-bg);
   color: var(--ink);
   resize: vertical;
