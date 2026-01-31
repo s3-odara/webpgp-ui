@@ -43,6 +43,25 @@
         <div class="actions">
           <button id="copy" type="button">コピー</button>
         </div>
+
+        <div class="divider"></div>
+
+        <label class="field">
+          <span>ファイル（複数可）</span>
+          <input id="file-input" type="file" multiple>
+        </label>
+        <label class="field">
+          <span>フォルダ（webkitdirectory 対応ブラウザ）</span>
+          <input id="folder-input" type="file" webkitdirectory directory multiple>
+        </label>
+        <div class="actions">
+          <button id="encrypt-files" type="button">ファイル/フォルダを暗号化</button>
+        </div>
+        <div class="download">
+          <div class="label">暗号化済みファイル</div>
+          <div id="download-name" class="mono">-</div>
+          <a id="download-link" class="download-link" href="#" download>ダウンロード</a>
+        </div>
       </section>
     </main>
 
