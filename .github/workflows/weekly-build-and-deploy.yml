@@ -138,13 +138,12 @@ jobs:
 
       - name: Sync to Cloudflare R2
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
           AWS_EC2_METADATA_DISABLED: "true"
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-          R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
+          ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
         run: |
           set -euo pipefail
-          aws s3 sync site "s3://$R2_BUCKET" --endpoint-url "$R2_ENDPOINT" --delete
+          aws s3 sync site "s3://$BUCKET_NAME" --endpoint-url "$ENDPOINT_URL" --delete

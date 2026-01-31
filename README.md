@@ -1,28 +1,28 @@
 # browser-pgp-ui
 
-OpenPGP.js を使った「暗号化のみ」の静的 Web UI です。復号/署名検証/署名生成は実装していません。
+OpenPGP.js を使って自分用に暗号化メッセージを作成するための静的 Web UI 。復号/署名検証/署名生成の機能はない。
 
 ## 使い方
-- `site/` を静的ホスティングに配置すると動作します（ビルド不要）。
-- 公開鍵は同一オリジンの `/pubkey.asc` から取得します。
-- 暗号化対象の平文を入力して「暗号化」を押すと、armored PGP message が出力されます。
-- ファイル/フォルダを選択して「ファイル/フォルダを暗号化」を押すと、`tar` にまとめて暗号化したファイルをダウンロードできます（ローカル処理）。
+- Github Actionsで`site/`以下を静的ホスティングサービスに配置すると動作する。
+- 公開鍵は同一オリジンの `/pubkey.asc` から取得する。
+- 暗号化対象の平文を入力して「暗号化」を押すと、armored PGP message が出力される。
+- ファイル/フォルダを選択して「ファイル/フォルダを暗号化」を押すと、`tar` にまとめて暗号化したファイルをダウンロードできる。
 
 ## 公開鍵の差し替え
-1. 既存の `site/pubkey.asc` を置き換えます。
+1. 既存の `site/pubkey.asc` を置き換える。
 2. 例: GnuPG で公開鍵をエクスポートする場合
    - `gpg --armor --export your@example.com > site/pubkey.asc`
-3. デプロイ後、UI 画面に表示される fingerprint を確認してください。
+3. デプロイ後、UI 画面に表示される fingerprint を確認する。
 
 ## GitHub Actions secrets
-Cloudflare R2 に同期するため、以下の Secrets を設定してください。
-- `R2_ACCESS_KEY_ID`
-- `R2_SECRET_ACCESS_KEY`
-- `R2_ACCOUNT_ID`
-- `R2_BUCKET`
+以下のシークレットを設定すると、S3互換ストレージに同期できる。
+- `ACCESS_KEY_ID`
+- `SECRET_ACCESS_KEY`
+- `ENDPOINT_URL`
+- `BUCKET_NAME`
 
 ## 自動更新の仕組み
-`.github/workflows/weekly-build-and-deploy.yml` が週1回（JST 月曜 03:00 / UTC 日曜 18:00）と手動実行で動作します。
+`.github/workflows/weekly-build-and-deploy.yml` が週1回（JST 月曜 03:00 / UTC 日曜 18:00）と手動実行で動作する。
 
 フロー:
 1. openpgpjs/openpgpjs の最新 Release tag を取得
@@ -32,15 +32,7 @@ Cloudflare R2 に同期するため、以下の Secrets を設定してくださ
 5. deploy job が artifact を `site/vendor/` に反映して R2 に sync
 
 ## セキュリティ上の意図
-- ビルド job とデプロイ job を分離し、**ビルド job には R2 の Secrets を渡さない**構成です。
-- 署名/プロベナンス検証に失敗する場合は `npm audit signatures` で失敗させ、安全側に倒します。
-- ランタイムで外部 CDN を参照せず、`site/vendor/openpgp.min.mjs` を自前ホストします。
+- ビルド job とデプロイ job を分離し、ビルド job には R2 の Secrets を渡さない構成。
+- `git verify-tag`と`npm audit signatures`でソースとビルド時の依存を検証する。
+- ランタイムで外部CDNを参照せず、`site/vendor/openpgp.min.mjs` を同一オリジンに置く。
 
-## リポジトリ構成
-- `site/index.html`
-- `site/style.css`
-- `site/app.mjs`
-- `site/vendor/openpgp.min.mjs`（週次ビルド成果物で上書き）
-- `site/vendor/openpgp.version.txt`
-- `site/pubkey.asc`
-- `.github/workflows/weekly-build-and-deploy.yml`
