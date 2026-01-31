@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+env:
+  OPENPGPJS_SIGNER_FPRS: |
+    twiss:72E33AE81300E553BC4EEDEFCB064A128FA90686
+    larabr:DDEBA5D26F64DC406368799F2A4BEC40729185DD
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,20 +48,60 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ steps.release.outputs.tag }}"
-          curl -fL "https://github.com/openpgpjs/openpgpjs/archive/refs/tags/${tag}.tar.gz" -o openpgpjs.tar.gz
-          tar -xzf openpgpjs.tar.gz
-          src_dir=$(ls -d openpgpjs-*)
-          cd "$src_dir"
-          npm install
+
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -p "$GNUPGHOME"
+          chmod 700 "$GNUPGHOME"
+
+          while IFS= read -r entry; do
+            [ -z "$entry" ] && continue
+            username=${entry%%:*}
+            fpr=${entry#*:}
+            if [ -z "$username" ] || [ -z "$fpr" ]; then
+              echo "Invalid OPENPGPJS_SIGNER_FPRS entry: $entry" >&2
+              exit 1
+            fi
+            if ! printf '%s' "$fpr" | grep -Eq '^[0-9A-Fa-f]{40}$'; then
+              echo "Invalid fingerprint format for $username: $fpr" >&2
+              exit 1
+            fi
+            keyfile="$RUNNER_TEMP/${username}.gpg"
+            curl -fsSL "https://github.com/${username}.gpg" \
+              | sed 's/-----END PGP PUBLIC KEY BLOCK-----/-----END PGP PUBLIC KEY BLOCK-----\n/g' \
+              > "$keyfile"
+            gpg --batch --import "$keyfile"
+            if ! gpg --batch --with-colons --fingerprint \
+              | awk -F: '$1=="fpr"{print $10}' \
+              | grep -Fx "$fpr" >/dev/null; then
+              echo "Expected fingerprint not found for $username: $fpr" >&2
+              exit 1
+            fi
+          done <<EOF_FPRS
+          ${{ env.OPENPGPJS_SIGNER_FPRS }}
+          EOF_FPRS
+
+          git init openpgpjs-src
+          cd openpgpjs-src
+          git remote add origin https://github.com/openpgpjs/openpgpjs.git
+          git fetch --depth=1 origin "refs/tags/${tag}:refs/tags/${tag}"
+          git -c gpg.program=gpg verify-tag "${tag}"
+          git checkout -q "${tag}"
+
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
           npm audit signatures
           npm test
+
           cd ..
           mkdir -p build_artifact
-          if [ ! -f "$src_dir/dist/openpgp.min.mjs" ]; then
+          if [ ! -f "openpgpjs-src/dist/openpgp.min.mjs" ]; then
             echo "dist/openpgp.min.mjs not found after build" >&2
             exit 1
           fi
-          cp "$src_dir/dist/openpgp.min.mjs" build_artifact/openpgp.min.mjs
+          cp "openpgpjs-src/dist/openpgp.min.mjs" build_artifact/openpgp.min.mjs
           printf '%s\n' "${{ steps.release.outputs.version }}" > build_artifact/openpgp.version.txt
 
       - name: Upload artifact
