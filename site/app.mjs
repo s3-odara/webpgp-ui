@@ -8,6 +8,7 @@ const elements = {
   ciphertext: document.getElementById('ciphertext'),
   encrypt: document.getElementById('encrypt'),
   copy: document.getElementById('copy'),
+  copyStatus: document.getElementById('copy-status'),
   fileInput: document.getElementById('file-input'),
   folderInput: document.getElementById('folder-input'),
   encryptFiles: document.getElementById('encrypt-files'),
@@ -259,12 +260,38 @@ async function copyCiphertext() {
   if (!text) {
     return;
   }
+  let copied = false;
   try {
     await navigator.clipboard.writeText(text);
+    copied = true;
   } catch {
     elements.ciphertext.focus();
     elements.ciphertext.select();
+    try {
+      copied = document.execCommand('copy');
+    } catch {
+      copied = false;
+    }
   }
+  if (copied) {
+    showCopyStatus();
+  }
+}
+
+let copyStatusTimer = null;
+
+function showCopyStatus() {
+  if (!elements.copyStatus) {
+    return;
+  }
+  elements.copyStatus.classList.add('show');
+  if (copyStatusTimer) {
+    clearTimeout(copyStatusTimer);
+  }
+  copyStatusTimer = setTimeout(() => {
+    elements.copyStatus.classList.remove('show');
+    copyStatusTimer = null;
+  }, 1800);
 }
 
 function init() {

@@ -10,7 +10,6 @@
   <body>
     <main class="page">
       <header class="hero">
-        <p class="eyebrow">OpenPGP Encrypt Only</p>
         <h1>s3-odaraに暗号化するページ</h1>
         <p class="lead">ここで暗号化したメッセージをコピーして適当に送信してください。</p>
       </header>
@@ -30,7 +29,7 @@
 
         <label class="field">
           <span>平文</span>
-          <textarea id="plaintext" rows="10" placeholder="ここに暗号化したいテキストを入力してください"></textarea>
+          <textarea id="plaintext" rows="5" placeholder="ここに暗号化したいテキストを入力してください"></textarea>
         </label>
         <div class="actions">
           <button id="encrypt" type="button">暗号化</button>
@@ -38,16 +37,17 @@
 
         <label class="field">
           <span>暗号化結果（armored）</span>
-          <textarea id="ciphertext" rows="10" readonly></textarea>
+          <textarea id="ciphertext" rows="5" readonly></textarea>
         </label>
         <div class="actions">
           <button id="copy" type="button">コピー</button>
+          <span id="copy-status" class="copy-status" role="status" aria-live="polite">copied</span>
         </div>
 
         <div class="divider"></div>
 
         <label class="field">
-          <span>ファイル（複数可）</span>
+          <span>ファイル（複数選択可）</span>
           <input id="file-input" type="file" multiple>
         </label>
         <label class="field">
