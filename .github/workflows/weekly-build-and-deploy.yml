@@ -16,6 +16,8 @@ env:
     twiss:72E33AE81300E553BC4EEDEFCB064A128FA90686
     larabr:DDEBA5D26F64DC406368799F2A4BEC40729185DD
 
+  BROTLI_REGEX: '.*\.(htm|html|txt|text|asc|js|mjs|css|json|xml|svg|map|webmanifest)$'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,6 +32,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
+
+      - name: Install brotli
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y brotli
 
       - name: Fetch latest openpgpjs release tag
         id: release
@@ -102,13 +110,43 @@ jobs:
           cp "openpgpjs-src/dist/openpgp.min.mjs" build_artifact/openpgp.min.mjs
           printf '%s\n' "${{ steps.release.outputs.version }}" > build_artifact/openpgp.version.txt
 
-      - name: Upload artifact
+      - name: Update vendor bundle in site tree
+        run: |
+          set -euo pipefail
+          mkdir -p site/vendor
+          cp build_artifact/openpgp.min.mjs site/vendor/openpgp.min.mjs
+          cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
+
+      - name: Prepare deploy trees (plain + brotli)
+        run: |
+          set -euo pipefail
+          rm -rf build_site_plain build_site_br
+          mkdir -p build_site_plain build_site_br
+
+          rsync -a --delete site/ build_site_plain/
+          rsync -a --delete build_site_plain/ build_site_br/
+
+          # brotli 対象リスト作成（deploy 側で同じリストを使って Content-Encoding を付与する）
+          find build_site_br -type f -regextype posix-extended -regex "${BROTLI_REGEX}" -printf '%P\n' \
+            | LC_ALL=C sort > brotli_file_list.txt
+
+          # brotli で「同名に上書き」する（tmp を作って差し替え）
+          while IFS= read -r rel; do
+            [ -z "$rel" ] && continue
+            f="build_site_br/$rel"
+            tmp="${f}.brtmp"
+            brotli -f -q 11 -o "$tmp" "$f"
+            mv "$tmp" "$f"
+          done < brotli_file_list.txt
+
+      - name: Upload artifacts (site trees + brotli list)
         uses: actions/upload-artifact@v6
         with:
-          name: openpgp-dist
+          name: site-deploy
           path: |
-            build_artifact/openpgp.min.mjs
-            build_artifact/openpgp.version.txt
+            build_site_plain
+            build_site_br
+            brotli_file_list.txt
           if-no-files-found: error
 
   deploy:
@@ -118,23 +156,13 @@ jobs:
       contents: read
       actions: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Download artifact
         uses: actions/download-artifact@v7
         with:
-          name: openpgp-dist
-          path: build_artifact
+          name: site-deploy
+          path: deploy_artifact
 
-      - name: Update vendor bundle
-        run: |
-          set -euo pipefail
-          mkdir -p site/vendor
-          cp build_artifact/openpgp.min.mjs site/vendor/openpgp.min.mjs
-          cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
-
-      - name: Sync to Cloudflare R2
+      - name: Sync uncompressed tree to Cloudflare R2 (baseline)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
@@ -144,4 +172,27 @@ jobs:
           ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
         run: |
           set -euo pipefail
-          aws s3 sync site "s3://$BUCKET_NAME" --endpoint-url "$ENDPOINT_URL" --delete
+          aws s3 sync deploy_artifact/build_site_plain "s3://$BUCKET_NAME" \
+            --endpoint-url "$ENDPOINT_URL" --delete
+
+      - name: Overwrite brotli targets with Content-Encoding br
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
+          ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r rel; do
+            [ -z "$rel" ] && continue
+            src="deploy_artifact/build_site_br/$rel"
+            dst="s3://$BUCKET_NAME/$rel"
+
+            aws s3 cp "$src" "$dst" \
+              --endpoint-url "$ENDPOINT_URL" \
+              --content-encoding br
+          done < deploy_artifact/brotli_file_list.txt
+

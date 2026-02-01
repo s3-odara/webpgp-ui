@@ -100,6 +100,7 @@ textarea {
   background: var(--area-bg);
   color: var(--ink);
   resize: vertical;
+  font-size: 1rem;
 }
 
 .actions {
