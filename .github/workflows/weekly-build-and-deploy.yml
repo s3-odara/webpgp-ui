@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: site-deploy
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
