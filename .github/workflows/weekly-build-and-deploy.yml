@@ -59,60 +59,10 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
 
       - name: Download source and build bundle
-        run: |
-          set -euo pipefail
-          tag="${{ steps.release.outputs.tag }}"
-
-          export GNUPGHOME="$RUNNER_TEMP/gnupg"
-          mkdir -p "$GNUPGHOME"
-          chmod 700 "$GNUPGHOME"
-
-          while IFS= read -r entry; do
-            [ -z "$entry" ] && continue
-            username=${entry%%:*}
-            fpr=${entry#*:}
-            if [ -z "$username" ] || [ -z "$fpr" ]; then
-              echo "Invalid OPENPGPJS_SIGNER_FPRS entry: $entry" >&2
-              exit 1
-            fi
-            if ! printf '%s' "$fpr" | grep -Eq '^[0-9A-Fa-f]{40}$'; then
-              echo "Invalid fingerprint format for $username: $fpr" >&2
-              exit 1
-            fi
-            keyfile="$RUNNER_TEMP/${username}.gpg"
-            curl -fsSL "https://github.com/${username}.gpg" \
-              | sed 's/-----END PGP PUBLIC KEY BLOCK-----/-----END PGP PUBLIC KEY BLOCK-----\n/g' \
-              > "$keyfile"
-            gpg --batch --import "$keyfile"
-            if ! gpg --batch --with-colons --fingerprint \
-              | awk -F: '$1=="fpr"{print $10}' \
-              | grep -Fx "$fpr" >/dev/null; then
-              echo "Expected fingerprint not found for $username: $fpr" >&2
-              exit 1
-            fi
-          done <<EOF_FPRS
-          ${{ env.OPENPGPJS_SIGNER_FPRS }}
-          EOF_FPRS
-
-          git init openpgpjs-src
-          cd openpgpjs-src
-          git remote add origin https://github.com/openpgpjs/openpgpjs.git
-          git fetch --depth=1 origin "refs/tags/${tag}:refs/tags/${tag}"
-          git -c gpg.program=gpg verify-tag "${tag}"
-          git checkout -q "${tag}"
-
-          npm ci
-          npm audit signatures
-          npm test
-
-          cd ..
-          mkdir -p build_artifact
-          if [ ! -f "openpgpjs-src/dist/openpgp.min.mjs" ]; then
-            echo "dist/openpgp.min.mjs not found after build" >&2
-            exit 1
-          fi
-          cp "openpgpjs-src/dist/openpgp.min.mjs" build_artifact/openpgp.min.mjs
-          printf '%s\n' "${{ steps.release.outputs.version }}" > build_artifact/openpgp.version.txt
+        env:
+          OPENPGPJS_TAG: ${{ steps.release.outputs.tag }}
+          OPENPGPJS_VERSION: ${{ steps.release.outputs.version }}
+        run: scripts/ci/download-source-and-build-bundle.sh
 
       - name: Update vendor bundle in site tree
         run: |
@@ -122,24 +72,7 @@ jobs:
           cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
 
       - name: Prepare deploy trees (plain + __br)
-        run: |
-          set -euo pipefail
-          rm -rf build_site_plain build_site__br
-          mkdir -p build_site_plain build_site__br
-          rsync -a --delete site/ build_site_plain/
-
-          # brotli 対象リスト
-          find build_site_plain -type f -regextype posix-extended -iregex "${BROTLI_REGEX}" -printf '%P\n' \
-            | LC_ALL=C sort > brotli_file_list.txt
-
-          # __br に圧縮して同名で生成
-          while IFS= read -r rel; do
-            [ -z "$rel" ] && continue
-            src="build_site_plain/$rel"
-            dst="build_site__br/$rel"
-            mkdir -p "$(dirname "$dst")"
-            brotli -f -q 11 -o "$dst" "$src"
-          done < brotli_file_list.txt
+        run: scripts/ci/prepare-deploy-trees.sh
 
       - name: Upload artifacts (site trees + brotli list)
         uses: actions/upload-artifact@v6
