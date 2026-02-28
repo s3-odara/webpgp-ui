@@ -92,7 +92,7 @@ jobs:
       actions: read
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: site-deploy
           path: deploy_artifact
