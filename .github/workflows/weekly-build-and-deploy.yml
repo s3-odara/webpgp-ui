@@ -75,7 +75,7 @@ jobs:
         run: scripts/ci/prepare-deploy-trees.sh
 
       - name: Upload artifacts (site trees + brotli list)
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: site-deploy
           path: |
