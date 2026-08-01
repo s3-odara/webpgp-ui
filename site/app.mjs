@@ -326,32 +326,23 @@ function buildTarHeader(path, size, mtime) {
 }
 
 async function buildTar(files) {
-  const parts = [];
-  let total = 0;
-  const zeroBlock = new Uint8Array(512);
-
-  for (const { path, file } of files) {
-    const data = new Uint8Array(await file.arrayBuffer());
-    const mtime = Math.floor((file.lastModified || Date.now()) / 1000);
-    const header = buildTarHeader(path, data.length, mtime);
-    parts.push(header, data);
-    total += header.length + data.length;
-    const padLength = (512 - (data.length % 512)) % 512;
-    if (padLength) {
-      const padding = new Uint8Array(padLength);
-      parts.push(padding);
-      total += padding.length;
-    }
+  let total = 1024;
+  for (const { file } of files) {
+    const padLength = (512 - (file.size % 512)) % 512;
+    total += 512 + file.size + padLength;
   }
-
-  parts.push(zeroBlock, zeroBlock);
-  total += zeroBlock.length * 2;
 
   const tar = new Uint8Array(total);
   let offset = 0;
-  for (const part of parts) {
-    tar.set(part, offset);
-    offset += part.length;
+  for (const { path, file } of files) {
+    const data = new Uint8Array(await file.arrayBuffer());
+    const mtime = Math.floor((file.lastModified || Date.now()) / 1000);
+    const header = buildTarHeader(path, file.size, mtime);
+    tar.set(header, offset);
+    offset += header.length;
+    tar.set(data, offset);
+    const padLength = (512 - (file.size % 512)) % 512;
+    offset += file.size + padLength;
   }
   return tar;
 }
