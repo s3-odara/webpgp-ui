@@ -182,19 +182,10 @@ function renderSelectedFiles() {
       const remove = document.createElement('button');
       remove.className = 'remove-file';
       remove.type = 'button';
+      remove.dataset.path = item.path;
       remove.textContent = '×';
       remove.setAttribute('aria-label', `${item.path} を選択から削除`);
       remove.disabled = fileEncryptionBusy;
-      remove.addEventListener('click', () => {
-        if (fileEncryptionBusy) {
-          return;
-        }
-        const index = selectedFiles.findIndex((selected) => selected.path === item.path);
-        if (index !== -1) {
-          selectedFiles.splice(index, 1);
-          renderSelectedFiles();
-        }
-      });
 
       row.append(path, size, remove);
       fragment.append(row);
@@ -206,34 +197,40 @@ function renderSelectedFiles() {
 
 function renderEncryptedFiles(files) {
   const totalSize = files.reduce((total, item) => total + item.size, 0);
-  elements.encryptedFilesSummary.textContent = files.length === 0
-    ? 'まだありません'
-    : `${files.length}件 / 合計 ${formatFileSize(totalSize)}`;
+  elements.encryptedFilesSummary.hidden = false;
+  elements.encryptedFilesSummary.textContent = `${files.length}件 / 合計 ${formatFileSize(totalSize)}`;
+  elements.encryptedFilesList.hidden = false;
 
   const fragment = document.createDocumentFragment();
-  if (files.length === 0) {
-    const empty = document.createElement('li');
-    empty.className = 'selected-files-empty';
-    empty.textContent = '暗号化済みファイルはまだありません。';
-    fragment.append(empty);
-  } else {
-    for (const item of files) {
-      const row = document.createElement('li');
-      row.className = 'selected-file encrypted-file';
+  for (const item of files) {
+    const row = document.createElement('li');
+    row.className = 'selected-file';
 
-      const path = document.createElement('span');
-      path.className = 'selected-file-path';
-      path.textContent = item.path;
+    const path = document.createElement('span');
+    path.className = 'selected-file-path';
+    path.textContent = item.path;
 
-      const size = document.createElement('span');
-      size.className = 'selected-file-size';
-      size.textContent = formatFileSize(item.size);
+    const size = document.createElement('span');
+    size.className = 'selected-file-size';
+    size.textContent = formatFileSize(item.size);
 
-      row.append(path, size);
-      fragment.append(row);
-    }
+    row.append(path, size);
+    fragment.append(row);
   }
   elements.encryptedFilesList.replaceChildren(fragment);
+}
+
+function removeSelectedFile(event) {
+  const path = event.target?.closest?.('.remove-file')?.dataset.path;
+  if (!path || fileEncryptionBusy) {
+    return;
+  }
+  const index = selectedFiles.findIndex((item) => item.path === path);
+  if (index < 0) {
+    return;
+  }
+  selectedFiles.splice(index, 1);
+  renderSelectedFiles();
 }
 
 function addSelectedFiles(files, input) {
@@ -462,10 +459,10 @@ function init() {
     addSelectedFiles(elements.folderInput.files, elements.folderInput);
   });
   elements.clearFiles.addEventListener('click', clearSelectedFiles);
+  elements.selectedFilesList.addEventListener('click', removeSelectedFile);
   elements.encrypt.disabled = true;
   elements.encryptFiles.disabled = true;
   renderSelectedFiles();
-  renderEncryptedFiles([]);
   setDownload(null, null);
   loadVersion();
   loadPublicKey();
