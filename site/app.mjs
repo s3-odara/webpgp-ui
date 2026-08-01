@@ -220,6 +220,9 @@ function collectFiles() {
 
   const byPath = new Map();
   for (const item of list) {
+    if (byPath.has(item.path)) {
+      throw new Error(`ファイルパスが重複しています: ${item.path}`);
+    }
     byPath.set(item.path, item);
   }
   return Array.from(byPath.values()).sort((a, b) => a.path.localeCompare(b.path));
@@ -231,12 +234,12 @@ async function encryptFiles() {
     return;
   }
   setDownload(null, null);
-  const files = collectFiles();
-  if (files.length === 0) {
-    setError('暗号化するファイルまたはフォルダを選択してください。');
-    return;
-  }
   try {
+    const files = collectFiles();
+    if (files.length === 0) {
+      setError('暗号化するファイルまたはフォルダを選択してください。');
+      return;
+    }
     const tar = await buildTar(files);
     const message = await openpgp.createMessage({ binary: tar });
     const encrypted = await openpgp.encrypt({
