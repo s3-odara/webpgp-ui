@@ -23,11 +23,16 @@ const elements = {
 
 let publicKey = null;
 let downloadUrl = null;
+let errorTimer = null;
 let fileEncryptionBusy = false;
 const selectedFiles = [];
 const encoder = new TextEncoder();
 
 function setError(message) {
+  if (errorTimer) {
+    clearTimeout(errorTimer);
+    errorTimer = null;
+  }
   if (!message) {
     elements.error.textContent = '';
     elements.error.classList.remove('show');
@@ -35,6 +40,11 @@ function setError(message) {
   }
   elements.error.textContent = message;
   elements.error.classList.add('show');
+  errorTimer = setTimeout(() => {
+    elements.error.textContent = '';
+    elements.error.classList.remove('show');
+    errorTimer = null;
+  }, 5000);
 }
 
 function setDownload(name, blob) {

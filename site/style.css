@@ -80,6 +80,9 @@ h1 {
 }
 
 .error.show {
+  position: sticky;
+  top: 8px;
+  z-index: 1;
   display: block;
 }
 
