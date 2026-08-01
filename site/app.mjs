@@ -141,18 +141,12 @@ function formatFileSize(bytes) {
 }
 
 function updateFileEncryptionControls() {
-  elements.fileInput.disabled = fileEncryptionBusy;
-  elements.folderInput.disabled = fileEncryptionBusy;
-  elements.clearFiles.disabled = fileEncryptionBusy || selectedFiles.length === 0;
-  elements.encryptFiles.disabled = fileEncryptionBusy || !publicKey;
-  for (const button of elements.selectedFilesList.querySelectorAll('.remove-file')) {
-    button.disabled = fileEncryptionBusy;
-  }
+  elements.clearFiles.disabled = selectedFiles.length === 0;
+  elements.encryptFiles.disabled = !publicKey;
 }
 
 function setFileEncryptionBusy(busy) {
   fileEncryptionBusy = busy;
-  updateFileEncryptionControls();
 }
 
 function renderSelectedFiles() {
@@ -185,7 +179,6 @@ function renderSelectedFiles() {
       remove.dataset.path = item.path;
       remove.textContent = '×';
       remove.setAttribute('aria-label', `${item.path} を選択から削除`);
-      remove.disabled = fileEncryptionBusy;
 
       row.append(path, size, remove);
       fragment.append(row);
@@ -375,6 +368,9 @@ function collectFiles() {
 }
 
 async function encryptFiles() {
+  if (fileEncryptionBusy) {
+    return;
+  }
   if (!publicKey) {
     setError('公開鍵が読み込まれていません。');
     return;
