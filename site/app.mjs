@@ -156,28 +156,28 @@ function renderSelectedFiles() {
   const fragment = document.createDocumentFragment();
   if (selectedFiles.length === 0) {
     const empty = document.createElement('li');
-    empty.className = 'selected-files-empty';
+    empty.className = 'file-list-empty';
     empty.textContent = 'ファイルは選択されていません。';
     fragment.append(empty);
   } else {
     const sortedFiles = [...selectedFiles].sort((a, b) => a.path.localeCompare(b.path));
     for (const item of sortedFiles) {
       const row = document.createElement('li');
-      row.className = 'selected-file';
+      row.className = 'file-list-item';
 
       const path = document.createElement('span');
-      path.className = 'selected-file-path';
+      path.className = 'file-path';
       path.textContent = item.path;
 
       const size = document.createElement('span');
-      size.className = 'selected-file-size';
+      size.className = 'file-size';
       size.textContent = formatFileSize(item.file.size);
 
       const remove = document.createElement('button');
       remove.className = 'remove-file';
       remove.type = 'button';
       remove.dataset.path = item.path;
-      remove.textContent = '×';
+      remove.textContent = '削除';
       remove.setAttribute('aria-label', `${item.path} を選択から削除`);
 
       row.append(path, size, remove);
@@ -197,14 +197,14 @@ function renderEncryptedFiles(files) {
   const fragment = document.createDocumentFragment();
   for (const item of files) {
     const row = document.createElement('li');
-    row.className = 'selected-file';
+    row.className = 'file-list-item';
 
     const path = document.createElement('span');
-    path.className = 'selected-file-path';
+    path.className = 'file-path';
     path.textContent = item.path;
 
     const size = document.createElement('span');
-    size.className = 'selected-file-size';
+    size.className = 'file-size';
     size.textContent = formatFileSize(item.size);
 
     row.append(path, size);
