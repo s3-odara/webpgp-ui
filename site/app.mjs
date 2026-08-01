@@ -141,12 +141,18 @@ function formatFileSize(bytes) {
 }
 
 function updateFileEncryptionControls() {
-  elements.clearFiles.disabled = selectedFiles.length === 0;
-  elements.encryptFiles.disabled = !publicKey;
+  elements.fileInput.disabled = fileEncryptionBusy;
+  elements.folderInput.disabled = fileEncryptionBusy;
+  elements.clearFiles.disabled = fileEncryptionBusy || selectedFiles.length === 0;
+  elements.encryptFiles.disabled = fileEncryptionBusy || !publicKey;
+  for (const remove of elements.selectedFilesList.querySelectorAll('.remove-file')) {
+    remove.disabled = fileEncryptionBusy;
+  }
 }
 
 function setFileEncryptionBusy(busy) {
   fileEncryptionBusy = busy;
+  updateFileEncryptionControls();
 }
 
 function renderSelectedFiles() {
@@ -178,6 +184,7 @@ function renderSelectedFiles() {
       remove.type = 'button';
       remove.dataset.path = item.path;
       remove.textContent = '削除';
+      remove.disabled = fileEncryptionBusy;
       remove.setAttribute('aria-label', `${item.path} を選択から削除`);
 
       row.append(path, size, remove);
