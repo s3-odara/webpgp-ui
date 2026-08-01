@@ -11,13 +11,20 @@ const elements = {
   copyStatus: document.getElementById('copy-status'),
   fileInput: document.getElementById('file-input'),
   folderInput: document.getElementById('folder-input'),
+  selectedFilesSummary: document.getElementById('selected-files-summary'),
+  selectedFilesList: document.getElementById('selected-files-list'),
+  clearFiles: document.getElementById('clear-files'),
   encryptFiles: document.getElementById('encrypt-files'),
   downloadName: document.getElementById('download-name'),
-  downloadLink: document.getElementById('download-link')
+  downloadLink: document.getElementById('download-link'),
+  encryptedFilesSummary: document.getElementById('encrypted-files-summary'),
+  encryptedFilesList: document.getElementById('encrypted-files-list')
 };
 
 let publicKey = null;
 let downloadUrl = null;
+let fileEncryptionBusy = false;
+const selectedFiles = [];
 const encoder = new TextEncoder();
 
 function setError(message) {
@@ -31,18 +38,23 @@ function setError(message) {
 }
 
 function setDownload(name, blob) {
-  if (downloadUrl) {
-    URL.revokeObjectURL(downloadUrl);
-    downloadUrl = null;
-  }
   if (!blob) {
+    if (downloadUrl) {
+      URL.revokeObjectURL(downloadUrl);
+      downloadUrl = null;
+    }
     elements.downloadName.textContent = '-';
     elements.downloadLink.setAttribute('aria-disabled', 'true');
     elements.downloadLink.removeAttribute('href');
     elements.downloadLink.removeAttribute('download');
     return;
   }
-  downloadUrl = URL.createObjectURL(blob);
+
+  const nextDownloadUrl = URL.createObjectURL(blob);
+  if (downloadUrl) {
+    URL.revokeObjectURL(downloadUrl);
+  }
+  downloadUrl = nextDownloadUrl;
   elements.downloadName.textContent = name;
   elements.downloadLink.href = downloadUrl;
   elements.downloadLink.download = name;
@@ -75,11 +87,11 @@ async function loadPublicKey() {
     elements.fingerprint.textContent = publicKey.getFingerprint();
     setError('');
     elements.encrypt.disabled = false;
-    elements.encryptFiles.disabled = false;
+    updateFileEncryptionControls();
   } catch (err) {
     publicKey = null;
     elements.encrypt.disabled = true;
-    elements.encryptFiles.disabled = true;
+    updateFileEncryptionControls();
     elements.fingerprint.textContent = '未取得';
     setError(err instanceof Error ? err.message : '公開鍵の取得に失敗しました');
   }
@@ -111,6 +123,153 @@ function normalizeTarPath(path) {
     normalized = normalized.slice(2);
   }
   return normalized || 'file';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const units = ['KiB', 'MiB', 'GiB', 'TiB'];
+  let value = bytes;
+  let unitIndex = -1;
+  do {
+    value /= 1024;
+    unitIndex += 1;
+  } while (value >= 1024 && unitIndex < units.length - 1);
+  const digits = value < 10 ? 1 : 0;
+  return `${value.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function updateFileEncryptionControls() {
+  elements.fileInput.disabled = fileEncryptionBusy;
+  elements.folderInput.disabled = fileEncryptionBusy;
+  elements.clearFiles.disabled = fileEncryptionBusy || selectedFiles.length === 0;
+  elements.encryptFiles.disabled = fileEncryptionBusy || !publicKey;
+  for (const button of elements.selectedFilesList.querySelectorAll('.remove-file')) {
+    button.disabled = fileEncryptionBusy;
+  }
+}
+
+function setFileEncryptionBusy(busy) {
+  fileEncryptionBusy = busy;
+  updateFileEncryptionControls();
+}
+
+function renderSelectedFiles() {
+  const totalSize = selectedFiles.reduce((total, item) => total + item.file.size, 0);
+  elements.selectedFilesSummary.textContent = `${selectedFiles.length}件 / 合計 ${formatFileSize(totalSize)}`;
+
+  const fragment = document.createDocumentFragment();
+  if (selectedFiles.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'selected-files-empty';
+    empty.textContent = 'ファイルは選択されていません。';
+    fragment.append(empty);
+  } else {
+    const sortedFiles = [...selectedFiles].sort((a, b) => a.path.localeCompare(b.path));
+    for (const item of sortedFiles) {
+      const row = document.createElement('li');
+      row.className = 'selected-file';
+
+      const path = document.createElement('span');
+      path.className = 'selected-file-path';
+      path.textContent = item.path;
+
+      const size = document.createElement('span');
+      size.className = 'selected-file-size';
+      size.textContent = formatFileSize(item.file.size);
+
+      const remove = document.createElement('button');
+      remove.className = 'remove-file';
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', `${item.path} を選択から削除`);
+      remove.disabled = fileEncryptionBusy;
+      remove.addEventListener('click', () => {
+        if (fileEncryptionBusy) {
+          return;
+        }
+        const index = selectedFiles.findIndex((selected) => selected.path === item.path);
+        if (index !== -1) {
+          selectedFiles.splice(index, 1);
+          renderSelectedFiles();
+        }
+      });
+
+      row.append(path, size, remove);
+      fragment.append(row);
+    }
+  }
+  elements.selectedFilesList.replaceChildren(fragment);
+  updateFileEncryptionControls();
+}
+
+function renderEncryptedFiles(files) {
+  const totalSize = files.reduce((total, item) => total + item.size, 0);
+  elements.encryptedFilesSummary.textContent = files.length === 0
+    ? 'まだありません'
+    : `${files.length}件 / 合計 ${formatFileSize(totalSize)}`;
+
+  const fragment = document.createDocumentFragment();
+  if (files.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'selected-files-empty';
+    empty.textContent = '暗号化済みファイルはまだありません。';
+    fragment.append(empty);
+  } else {
+    for (const item of files) {
+      const row = document.createElement('li');
+      row.className = 'selected-file encrypted-file';
+
+      const path = document.createElement('span');
+      path.className = 'selected-file-path';
+      path.textContent = item.path;
+
+      const size = document.createElement('span');
+      size.className = 'selected-file-size';
+      size.textContent = formatFileSize(item.size);
+
+      row.append(path, size);
+      fragment.append(row);
+    }
+  }
+  elements.encryptedFilesList.replaceChildren(fragment);
+}
+
+function addSelectedFiles(files, input) {
+  if (fileEncryptionBusy) {
+    input.value = '';
+    return;
+  }
+  try {
+    const existingPaths = new Set(selectedFiles.map((item) => item.path));
+    const batch = [];
+    for (const file of files) {
+      const path = normalizeTarPath(file.webkitRelativePath || file.name);
+      if (existingPaths.has(path)) {
+        throw new Error(`ファイルパスが重複しています: ${path}`);
+      }
+      existingPaths.add(path);
+      batch.push({ path, file });
+    }
+    if (batch.length > 0) {
+      selectedFiles.push(...batch);
+      renderSelectedFiles();
+      setError('');
+    }
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'ファイルの追加に失敗しました');
+  } finally {
+    input.value = '';
+  }
+}
+
+function clearSelectedFiles() {
+  if (fileEncryptionBusy) {
+    return;
+  }
+  selectedFiles.length = 0;
+  renderSelectedFiles();
 }
 
 function byteLength(value) {
@@ -208,18 +367,8 @@ async function buildTar(files) {
 }
 
 function collectFiles() {
-  const list = [];
-  const addFiles = (files) => {
-    for (const file of files) {
-      const path = normalizeTarPath(file.webkitRelativePath || file.name);
-      list.push({ path, file });
-    }
-  };
-  addFiles(elements.fileInput.files);
-  addFiles(elements.folderInput.files);
-
   const byPath = new Map();
-  for (const item of list) {
+  for (const item of selectedFiles) {
     if (byPath.has(item.path)) {
       throw new Error(`ファイルパスが重複しています: ${item.path}`);
     }
@@ -233,7 +382,7 @@ async function encryptFiles() {
     setError('公開鍵が読み込まれていません。');
     return;
   }
-  setDownload(null, null);
+  setFileEncryptionBusy(true);
   try {
     const files = collectFiles();
     if (files.length === 0) {
@@ -250,11 +399,16 @@ async function encryptFiles() {
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const filename = `encrypted-${timestamp}.tar.gpg`;
     const blob = new Blob([encrypted], { type: 'application/octet-stream' });
+    const encryptedFiles = files.map(({ path, file }) => ({ path, size: file.size }));
     setDownload(filename, blob);
+    renderEncryptedFiles(encryptedFiles);
+    selectedFiles.length = 0;
+    renderSelectedFiles();
     setError('');
   } catch (err) {
-    setDownload(null, null);
     setError(err instanceof Error ? err.message : 'ファイル暗号化に失敗しました');
+  } finally {
+    setFileEncryptionBusy(false);
   }
 }
 
@@ -301,8 +455,17 @@ function init() {
   elements.encrypt.addEventListener('click', encryptMessage);
   elements.encryptFiles.addEventListener('click', encryptFiles);
   elements.copy.addEventListener('click', copyCiphertext);
+  elements.fileInput.addEventListener('change', () => {
+    addSelectedFiles(elements.fileInput.files, elements.fileInput);
+  });
+  elements.folderInput.addEventListener('change', () => {
+    addSelectedFiles(elements.folderInput.files, elements.folderInput);
+  });
+  elements.clearFiles.addEventListener('click', clearSelectedFiles);
   elements.encrypt.disabled = true;
   elements.encryptFiles.disabled = true;
+  renderSelectedFiles();
+  renderEncryptedFiles([]);
   setDownload(null, null);
   loadVersion();
   loadPublicKey();

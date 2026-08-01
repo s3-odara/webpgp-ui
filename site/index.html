@@ -54,14 +54,30 @@
           <span>フォルダ（webkitdirectory 対応ブラウザ）</span>
           <input id="folder-input" type="file" webkitdirectory directory multiple>
         </label>
+        <section class="selected-files" aria-labelledby="selected-files-heading">
+          <div class="selected-files-header">
+            <div>
+              <div id="selected-files-heading" class="label">選択済みファイル</div>
+              <div id="selected-files-summary" class="selected-files-summary" role="status" aria-live="polite">0件 / 0 B</div>
+            </div>
+            <button id="clear-files" class="clear-files" type="button">すべてクリア</button>
+          </div>
+          <ul id="selected-files-list" class="selected-files-list" aria-label="選択済みファイルの一覧">
+            <li class="selected-files-empty">ファイルは選択されていません。</li>
+          </ul>
+        </section>
         <div class="actions">
           <button id="encrypt-files" type="button">ファイル/フォルダを暗号化</button>
         </div>
-        <div class="download">
-          <div class="label">暗号化済みファイル</div>
+        <section class="download" aria-labelledby="encrypted-files-heading">
+          <div id="encrypted-files-heading" class="label">暗号化済みファイル</div>
           <div id="download-name" class="mono">-</div>
+          <div id="encrypted-files-summary" class="selected-files-summary" role="status" aria-live="polite">まだありません</div>
+          <ul id="encrypted-files-list" class="selected-files-list encrypted-files-list" aria-label="暗号化済みファイルの一覧">
+            <li class="selected-files-empty">暗号化済みファイルはまだありません。</li>
+          </ul>
           <a id="download-link" class="download-link" href="#" download>ダウンロード</a>
-        </div>
+        </section>
       </section>
     </main>
 
