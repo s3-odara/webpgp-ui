@@ -1,27 +1,23 @@
-name: Weekly build and deploy
+name: Build and deploy
 
 on:
-  schedule:
-    - cron: "0 18 * * 0"
   workflow_dispatch:
+  pull_request:
+    branches:
+      - master
   push:
     branches:
       - master
 
 concurrency:
-  group: site-deploy
+  group: site-deploy-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
-env:
-  OPENPGPJS_SIGNER_FPRS: |
-    twiss:72E33AE81300E553BC4EEDEFCB064A128FA90686
-    larabr:DDEBA5D26F64DC406368799F2A4BEC40729185DD
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,33 +30,26 @@ jobs:
         with:
           node-version: 24
 
-      - name: Fetch latest openpgpjs release tag
-        id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Check syntax
         run: |
           set -euo pipefail
-          tag=$(gh api repos/openpgpjs/openpgpjs/releases/latest --jq .tag_name)
-          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
-            echo "Failed to resolve latest tag" >&2
-            exit 1
-          fi
-          ver=${tag#v}
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          bash -n scripts/update-openpgpjs.sh
+          node --check site/app.mjs
+          node --check site/vendor/openpgp.min.mjs
+          node --check scripts/test-openpgpjs.mjs
 
-      - name: Download source and build bundle
-        env:
-          OPENPGPJS_TAG: ${{ steps.release.outputs.tag }}
-          OPENPGPJS_VERSION: ${{ steps.release.outputs.version }}
-        run: scripts/ci/download-source-and-build-bundle.sh
+      - name: Test vendored OpenPGP.js
+        run: node scripts/test-openpgpjs.mjs
 
-      - name: Update vendor bundle in site tree
-        run: |
-          set -euo pipefail
-          mkdir -p site/vendor
-          cp build_artifact/openpgp.min.mjs site/vendor/openpgp.min.mjs
-          cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
+  build:
+    if: github.ref == 'refs/heads/master'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Prepare site artifact
         run: |
@@ -77,6 +66,7 @@ jobs:
           if-no-files-found: error
 
   deploy:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     needs: build
     environment: production
@@ -95,7 +85,7 @@ jobs:
 
       - name: Install deployment dependencies
         run: npm ci --ignore-scripts
-   
+
       - name: Verify deployment dependency signatures
         run: npm audit signatures
 
