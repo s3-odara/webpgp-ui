@@ -85,6 +85,14 @@ async function loadVersion() {
   }
 }
 
+function hasVisibleContent(value) {
+  return /[^\p{White_Space}\p{Default_Ignorable_Code_Point}]/u.test(value);
+}
+
+function updateTextEncryptionControls() {
+  elements.encrypt.disabled = !publicKey || !hasVisibleContent(elements.plaintext.value);
+}
+
 async function loadPublicKey() {
   try {
     const res = await fetch('/pubkey.asc', { cache: 'no-store' });
@@ -94,11 +102,11 @@ async function loadPublicKey() {
     const armoredKey = await res.text();
     publicKey = await openpgp.readKey({ armoredKey });
     setError('');
-    elements.encrypt.disabled = false;
+    updateTextEncryptionControls();
     updateFileEncryptionControls();
   } catch (err) {
     publicKey = null;
-    elements.encrypt.disabled = true;
+    updateTextEncryptionControls();
     updateFileEncryptionControls();
     setError(err instanceof Error ? err.message : '公開鍵の取得に失敗しました');
   }
@@ -110,6 +118,10 @@ async function encryptMessage() {
     return;
   }
   const plaintext = elements.plaintext.value;
+  if (!hasVisibleContent(plaintext)) {
+    setError('暗号化する平文を入力してください。');
+    return;
+  }
   try {
     const message = await openpgp.createMessage({ text: plaintext });
     const encrypted = await openpgp.encrypt({
@@ -118,6 +130,7 @@ async function encryptMessage() {
       format: 'armored'
     });
     elements.ciphertext.value = encrypted;
+    elements.copy.disabled = false;
     setError('');
   } catch (err) {
     setError(err instanceof Error ? err.message : '暗号化に失敗しました');
@@ -151,7 +164,7 @@ function updateFileEncryptionControls() {
   elements.fileInput.disabled = fileEncryptionBusy;
   elements.folderInput.disabled = fileEncryptionBusy;
   elements.clearFiles.disabled = fileEncryptionBusy || selectedFiles.length === 0;
-  elements.encryptFiles.disabled = fileEncryptionBusy || !publicKey;
+  elements.encryptFiles.disabled = fileEncryptionBusy || !publicKey || selectedFiles.length === 0;
   for (const remove of elements.selectedFilesList.querySelectorAll('.remove-file')) {
     remove.disabled = fileEncryptionBusy;
   }
@@ -451,6 +464,7 @@ function showCopyStatus() {
 
 function init() {
   elements.encrypt.addEventListener('click', encryptMessage);
+  elements.plaintext.addEventListener('input', updateTextEncryptionControls);
   elements.encryptFiles.addEventListener('click', encryptFiles);
   elements.copy.addEventListener('click', copyCiphertext);
   elements.fileInput.addEventListener('change', () => {
@@ -461,7 +475,8 @@ function init() {
   });
   elements.clearFiles.addEventListener('click', clearSelectedFiles);
   elements.selectedFilesList.addEventListener('click', removeSelectedFile);
-  elements.encrypt.disabled = true;
+  updateTextEncryptionControls();
+  elements.copy.disabled = true;
   elements.encryptFiles.disabled = true;
   renderSelectedFiles();
   setDownload(null, null);
