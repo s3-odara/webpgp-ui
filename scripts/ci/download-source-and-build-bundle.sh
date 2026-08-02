@@ -77,9 +77,10 @@ fi
 
 git checkout -q "${tag}"
 
-npm ci
+npm ci --ignore-scripts
 npm audit signatures
-npm test
+npm --ignore-scripts run prepare
+npm --ignore-scripts test
 
 cd ..
 mkdir -p build_artifact
