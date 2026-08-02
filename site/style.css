@@ -237,82 +237,57 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 16px;
-  background: var(--accent-strong);
-  color: var(--panel);
-  text-decoration: none;
   width: fit-content;
+  text-decoration: none;
 }
 
-.download-link[aria-disabled="true"] {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-button {
+button,
+.download-link {
   appearance: none;
   border: none;
-  border-radius: 16px;
-  padding: 10px 20px;
+  border-radius: 14px;
+  padding: 8px 16px;
   background: var(--accent);
   color: var(--panel);
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(15, 76, 92, 0.18);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-button:hover {
-  transform: translateY(-1px);
+button:not(.clear-files, .remove-file):not(:disabled):hover,
+.download-link:not([aria-disabled="true"]):hover {
   background: #146174;
-  box-shadow: 0 10px 20px rgba(15, 76, 92, 0.25);
 }
 
-button:active {
-  transform: translateY(1px) scale(0.98);
+button:not(.clear-files, .remove-file):not(:disabled):active,
+.download-link:not([aria-disabled="true"]):active {
   background: var(--accent-strong);
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
-button:focus-visible {
+button:focus-visible,
+.download-link:focus-visible {
   outline: 3px solid rgba(15, 76, 92, 0.35);
   outline-offset: 2px;
 }
 
-button:disabled {
+button:disabled,
+.download-link[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
 }
 
 .clear-files,
 .remove-file {
   flex: 0 0 auto;
   border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 7px 12px;
   background: var(--panel);
   color: var(--accent-strong);
-  box-shadow: none;
 }
 
-.clear-files {
-  padding: 7px 12px;
-  font-size: 0.85rem;
-}
-
-.remove-file {
-  padding: 5px 8px;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  line-height: 1.2;
-}
-
-.clear-files:hover,
-.remove-file:hover {
-  background: var(--bg);
-  color: var(--accent-strong);
-  box-shadow: none;
+.clear-files:not(:disabled):hover,
+.remove-file:not(:disabled):hover {
+  background: var(--area-bg);
 }
 
 .copy-status {
