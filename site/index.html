@@ -14,16 +14,6 @@
       </header>
 
       <section class="panel">
-        <div class="meta">
-          <div>
-            <div class="label">Fingerprint</div>
-            <div id="fingerprint" class="mono">読み込み中...</div>
-          </div>
-          <div>
-            <div class="label">OpenPGP.js</div>
-            <div id="openpgp-version" class="mono">-</div>
-          </div>
-        </div>
         <div id="error" class="error" role="alert" aria-live="polite"></div>
 
         <label class="field">
@@ -35,7 +25,7 @@
         </div>
 
         <label class="field">
-          <span>暗号化結果（armored）</span>
+          <span>暗号化結果</span>
           <textarea id="ciphertext" rows="5" readonly></textarea>
         </label>
         <div class="actions">
@@ -80,6 +70,11 @@
           </div>
         </section>
       </section>
+
+      <footer class="app-footer">
+        <span class="label">OpenPGP.js</span>
+        <span id="openpgp-version" class="mono">-</span>
+      </footer>
     </main>
 
     <script type="module" src="./app.mjs"></script>

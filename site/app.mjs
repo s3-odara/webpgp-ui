@@ -1,7 +1,6 @@
 import * as openpgp from './vendor/openpgp.min.mjs';
 
 const elements = {
-  fingerprint: document.getElementById('fingerprint'),
   openpgpVersion: document.getElementById('openpgp-version'),
   error: document.getElementById('error'),
   plaintext: document.getElementById('plaintext'),
@@ -94,7 +93,6 @@ async function loadPublicKey() {
     }
     const armoredKey = await res.text();
     publicKey = await openpgp.readKey({ armoredKey });
-    elements.fingerprint.textContent = publicKey.getFingerprint();
     setError('');
     elements.encrypt.disabled = false;
     updateFileEncryptionControls();
@@ -102,7 +100,6 @@ async function loadPublicKey() {
     publicKey = null;
     elements.encrypt.disabled = true;
     updateFileEncryptionControls();
-    elements.fingerprint.textContent = '未取得';
     setError(err instanceof Error ? err.message : '公開鍵の取得に失敗しました');
   }
 }
