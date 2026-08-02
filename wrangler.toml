@@ -1,0 +1,10 @@
+name = "webpgp-ui"
+main = "scripts/worker.ts"
+compatibility_date = "2026-02-04"
+workers_dev = false
+
+[assets]
+binding = "ASSETS"
+directory = "./dist"
+html_handling = "none"
+not_found_handling = "404-page"

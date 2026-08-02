@@ -20,8 +20,6 @@ env:
     twiss:72E33AE81300E553BC4EEDEFCB064A128FA90686
     larabr:DDEBA5D26F64DC406368799F2A4BEC40729185DD
 
-  BROTLI_REGEX: '.*\.(htm|html|txt|text|asc|js|mjs|css|json|xml|svg|map|webmanifest)$'
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,12 +34,6 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
-
-      - name: Install brotli
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y brotli
 
       - name: Fetch latest openpgpjs release tag
         id: release
@@ -71,56 +63,39 @@ jobs:
           cp build_artifact/openpgp.min.mjs site/vendor/openpgp.min.mjs
           cp build_artifact/openpgp.version.txt site/vendor/openpgp.version.txt
 
-      - name: Prepare deploy trees (plain + __br)
-        run: scripts/ci/prepare-deploy-trees.sh
+      - name: Prepare site artifact
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          cp -a site/. dist/
 
-      - name: Upload artifacts (site trees + brotli list)
+      - name: Upload site artifact
         uses: actions/upload-artifact@v7
         with:
           name: site-deploy
-          path: |
-            build_site_plain
-            build_site__br
-            brotli_file_list.txt
+          path: dist
           if-no-files-found: error
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    environment: production
     permissions:
       contents: read
       actions: read
     steps:
-      - name: Download artifact
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download site artifact
         uses: actions/download-artifact@v8
         with:
           name: site-deploy
-          path: deploy_artifact
+          path: dist
 
-      - name: Sync uncompressed tree to Cloudflare R2 (baseline)
+      - name: Deploy to Cloudflare Workers
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          AWS_EC2_METADATA_DISABLED: "true"
-          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
-          ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
-        run: |
-          set -euo pipefail
-          aws s3 sync deploy_artifact/build_site_plain "s3://$BUCKET_NAME" \
-            --endpoint-url "$ENDPOINT_URL" --delete
-
-      - name: Sync brotli objects under __br/ with Content-Encoding br
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          AWS_EC2_METADATA_DISABLED: "true"
-          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
-          ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
-        run: |
-          set -euo pipefail
-          aws s3 sync deploy_artifact/build_site__br "s3://$BUCKET_NAME/__br" \
-            --endpoint-url "$ENDPOINT_URL" \
-            --content-encoding br \
-            --delete
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@latest deploy
