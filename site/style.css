@@ -35,10 +35,6 @@ h1 {
   font-weight: 600;
 }
 
-.lead {
-  color: var(--muted);
-}
-
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -67,9 +63,7 @@ h1 {
   gap: 8px;
   margin-top: 16px;
   color: var(--muted);
-}
-
-.app-footer .mono {
+  font-family: monospace;
   font-size: 0.8rem;
 }
 
