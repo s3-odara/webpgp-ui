@@ -86,13 +86,23 @@ git -C "$source_dir" checkout --quiet --detach "$tag_ref"
 )
 
 built_bundle="$source_dir/dist/openpgp.min.mjs"
+upstream_license="$source_dir/LICENSE"
 if [ ! -f "$built_bundle" ]; then
 	echo "dist/openpgp.min.mjs not found after build" >&2
+	exit 1
+fi
+if [ ! -f "$upstream_license" ]; then
+	echo "OpenPGP.js LICENSE not found" >&2
 	exit 1
 fi
 
 mkdir -p site/vendor
 cp "$built_bundle" site/vendor/openpgp.min.mjs
+cp "$upstream_license" site/vendor/LICENSE
 printf '%s\n' "$tag" >site/vendor/openpgp.tag.txt
+cat >site/vendor/openpgpjs.NOTICE <<EOF
+OpenPGP.js
+Source: https://github.com/openpgpjs/openpgpjs/tree/$tag
+EOF
 
 echo "Updated site/vendor to OpenPGP.js $tag"

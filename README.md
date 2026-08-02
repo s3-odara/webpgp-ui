@@ -27,13 +27,15 @@ scripts/update-openpgpjs.sh
 ```
 
 1. GitHub APIから最新のOpenPGP.js stable Release tagを取得する。
-2. OpenPGP.js maintainerのPGP公開鍵を取得
-2. openpgpjs/openpgpjsからそのtagを取得して`git verify-tag`で署名を検証する。
-3. 検証したtagをdetached checkoutした後、依存関係のinstall、ビルド、テストを一時ディレクトリで実行する。
-4. 成功した場合、次の2ファイルを置き換える。
+2. OpenPGP.js maintainerのPGP公開鍵を取得する。
+3. openpgpjs/openpgpjsからそのtagを取得して`git verify-tag`で署名を検証する。
+4. 検証したtagをdetached checkoutした後、依存関係のinstall、ビルド、テストを一時ディレクトリで実行する。
+5. 成功した場合、bundle、生成元tag、upstreamのライセンス、NOTICEを更新する。
 
 - `site/vendor/openpgp.min.mjs`
 - `site/vendor/openpgp.tag.txt`
+- `site/vendor/LICENSE`
+- `site/vendor/openpgpjs.NOTICE`
 
 `.github/workflows/openpgpjs-release-notification.yml`
 
