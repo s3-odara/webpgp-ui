@@ -1,0 +1,62 @@
+name: OpenPGP.js release notification
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: openpgpjs-release-notification
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check for a new OpenPGP.js release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          current_tag=$(<site/vendor/openpgp.tag.txt)
+          latest_tag=$(gh api repos/openpgpjs/openpgpjs/releases/latest | jq -er '.tag_name')
+
+          if [[ "$latest_tag" == "$current_tag" ]]; then
+            echo "Vendored OpenPGP.js is current ($current_tag)."
+            exit 0
+          fi
+
+          marker="<!-- openpgpjs-release:${latest_tag} -->"
+          exists=$(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/issues?state=all&per_page=100" |
+              jq -s --arg marker "$marker" \
+                'any(.[][]; (has("pull_request") | not) and ((.body // "") | contains($marker)))'
+          )
+          if [[ "$exists" == true ]]; then
+            echo "A notification issue already exists for $latest_tag."
+            exit 0
+          fi
+
+          release_url="https://github.com/openpgpjs/openpgpjs/releases/tag/${latest_tag}"
+          title="OpenPGP.js ${latest_tag} is available"
+          body=$(printf '%s\n' \
+            "$marker" \
+            "- Current tag: \`$current_tag\`" \
+            "- Latest stable tag: \`$latest_tag\`" \
+            "- Official release: $release_url" \
+            "" \
+            "Run \`scripts/update-openpgpjs.sh\` to update the bundle.")
+
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "$title" \
+            --body "$body"

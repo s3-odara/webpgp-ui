@@ -72,7 +72,7 @@ function setDownload(name, blob) {
 
 async function loadVersion() {
   try {
-    const res = await fetch('/vendor/openpgp.version.txt', { cache: 'no-store' });
+    const res = await fetch('/vendor/openpgp.tag.txt', { cache: 'no-store' });
     if (!res.ok) {
       return;
     }

@@ -19,17 +19,28 @@ OpenPGP.jsを使って自分用に暗号化メッセージを作成するため�
 
 API tokenにはWorkers Scriptsを編集する権限が必要。
 
-## 自動更新
-`.github/workflows/weekly-build-and-deploy.yml`が週1回動作する。
+## OpenPGP.js の更新
+リポジトリのルートから次を実行する。
 
-フロー:
-1. openpgpjs/openpgpjs の最新 Release tag を取得
-2. gpg鍵を取得、whitelistをtrust
-3. git tagがtrustされた鍵で署名されているか確認
-4. チェックアウトして`npm ci`
-5. `npm audit signatures` を実行
-6. `openpgp.min.mjs` と `openpgp.version.txt` を `site/vendor/` に追加し、生成した `dist/` を artifact 化
-7. deploy job が artifact の `dist/` を Cloudflare Workers Static Assets にデプロイ
+```sh
+scripts/update-openpgpjs.sh
+```
+
+1. GitHub APIから最新のOpenPGP.js stable Release tagを取得する。
+2. OpenPGP.js maintainerのPGP公開鍵を取得する。
+3. openpgpjs/openpgpjsからそのtagを取得して`git verify-tag`で署名を検証する。
+4. 検証したtagをdetached checkoutした後、依存関係のinstall、ビルド、テストを一時ディレクトリで実行する。
+5. 成功した場合、bundle、生成元tag、upstreamのライセンス、NOTICEを更新する。
+
+- `site/vendor/openpgp.min.mjs`
+- `site/vendor/openpgp.tag.txt`
+- `site/vendor/LICENSE`
+- `site/vendor/openpgpjs.NOTICE`
+
+`.github/workflows/openpgpjs-release-notification.yml`
+
+- 最新のstable release tagを確認する。
+- `site/vendor/openpgp.tag.txt`と異なるtagがあれば、GitHub Issueを作成して手動更新を通知する。
 
 ## セキュリティ上の意図
 - 自身の責任で管理されるサイトに設置して、自身へ暗号化してもらうので、公開鍵の検証はサイトがこのアセットを真正に配信することと、ユーザが間違えずにサイトを使うことに依る。
