@@ -113,15 +113,7 @@ async function loadPublicKey() {
 }
 
 async function encryptMessage() {
-  if (!publicKey) {
-    setError('公開鍵が読み込まれていません。');
-    return;
-  }
   const plaintext = elements.plaintext.value;
-  if (!hasVisibleContent(plaintext)) {
-    setError('暗号化する平文を入力してください。');
-    return;
-  }
   try {
     const message = await openpgp.createMessage({ text: plaintext });
     const encrypted = await openpgp.encrypt({
@@ -392,17 +384,9 @@ async function encryptFiles() {
   if (fileEncryptionBusy) {
     return;
   }
-  if (!publicKey) {
-    setError('公開鍵が読み込まれていません。');
-    return;
-  }
   setFileEncryptionBusy(true);
   try {
     const files = collectFiles();
-    if (files.length === 0) {
-      setError('暗号化するファイルまたはフォルダを選択してください。');
-      return;
-    }
     const tar = await buildTar(files);
     const message = await openpgp.createMessage({ binary: tar });
     const encrypted = await openpgp.encrypt({
