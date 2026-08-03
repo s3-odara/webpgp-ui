@@ -113,21 +113,16 @@ async function loadPublicKey() {
 }
 
 async function encryptMessage() {
-  if (!publicKey) {
-    setError('公開鍵が読み込まれていません。');
-    return;
-  }
   const plaintext = elements.plaintext.value;
-  if (!hasVisibleContent(plaintext)) {
-    setError('暗号化する平文を入力してください。');
-    return;
-  }
   try {
     const message = await openpgp.createMessage({ text: plaintext });
     const encrypted = await openpgp.encrypt({
       message,
       encryptionKeys: publicKey,
-      format: 'armored'
+      format: 'armored',
+      config: {
+        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+      }
     });
     elements.ciphertext.value = encrypted;
     elements.copy.disabled = false;
@@ -389,23 +384,18 @@ async function encryptFiles() {
   if (fileEncryptionBusy) {
     return;
   }
-  if (!publicKey) {
-    setError('公開鍵が読み込まれていません。');
-    return;
-  }
   setFileEncryptionBusy(true);
   try {
     const files = collectFiles();
-    if (files.length === 0) {
-      setError('暗号化するファイルまたはフォルダを選択してください。');
-      return;
-    }
     const tar = await buildTar(files);
     const message = await openpgp.createMessage({ binary: tar });
     const encrypted = await openpgp.encrypt({
       message,
       encryptionKeys: publicKey,
-      format: 'binary'
+      format: 'binary',
+      config: {
+        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+      }
     });
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const filename = `encrypted-${timestamp}.tar.gpg`;
