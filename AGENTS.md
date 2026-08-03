@@ -3,4 +3,4 @@
 - `site/style.css`
 - `site/app.mjs`
 - `site/pubkey.asc`
-- `.github/workflows/weekly-build-and-deploy.yml`
+- `.github/workflows/build-and-deploy.yml`
