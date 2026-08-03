@@ -127,7 +127,10 @@ async function encryptMessage() {
     const encrypted = await openpgp.encrypt({
       message,
       encryptionKeys: publicKey,
-      format: 'armored'
+      format: 'armored',
+      config: {
+        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+      }
     });
     elements.ciphertext.value = encrypted;
     elements.copy.disabled = false;
@@ -405,7 +408,10 @@ async function encryptFiles() {
     const encrypted = await openpgp.encrypt({
       message,
       encryptionKeys: publicKey,
-      format: 'binary'
+      format: 'binary',
+      config: {
+        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+      }
     });
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const filename = `encrypted-${timestamp}.tar.gpg`;

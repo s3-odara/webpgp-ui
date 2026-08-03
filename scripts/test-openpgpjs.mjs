@@ -19,7 +19,10 @@ const message = await openpgp.createMessage({ text: 'webpgp-ui OpenPGP.js smoke 
 const encrypted = await openpgp.encrypt({
   message,
   encryptionKeys: encryptionKey,
-  format: 'armored'
+  format: 'armored',
+  config: {
+    preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+  }
 });
 
 if (
