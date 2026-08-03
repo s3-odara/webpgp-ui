@@ -210,10 +210,9 @@ function renderSelectedFiles() {
   updateFileEncryptionControls();
 }
 
-function renderEncryptedFiles(files) {
-  const totalSize = files.reduce((total, item) => total + item.size, 0);
+function renderEncryptedFiles(files, encryptedSize) {
   elements.encryptedFilesSummary.hidden = false;
-  elements.encryptedFilesSummary.textContent = `${files.length}件 / 合計 ${formatFileSize(totalSize)}`;
+  elements.encryptedFilesSummary.textContent = `${files.length}件 / 合計 ${formatFileSize(encryptedSize)}`;
   elements.encryptedFilesList.hidden = false;
 
   const fragment = document.createDocumentFragment();
@@ -225,11 +224,7 @@ function renderEncryptedFiles(files) {
     path.className = 'file-path';
     path.textContent = item.path;
 
-    const size = document.createElement('span');
-    size.className = 'file-size';
-    size.textContent = formatFileSize(item.size);
-
-    row.append(path, size);
+    row.append(path);
     fragment.append(row);
   }
   elements.encryptedFilesList.replaceChildren(fragment);
@@ -400,9 +395,9 @@ async function encryptFiles() {
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const filename = `encrypted-${timestamp}.tar.gpg`;
     const blob = new Blob([encrypted], { type: 'application/octet-stream' });
-    const encryptedFiles = files.map(({ path, file }) => ({ path, size: file.size }));
+    const encryptedFiles = files.map(({ path }) => ({ path }));
     setDownload(filename, blob);
-    renderEncryptedFiles(encryptedFiles);
+    renderEncryptedFiles(encryptedFiles, blob.size);
     selectedFiles.length = 0;
     renderSelectedFiles();
     setError('');
