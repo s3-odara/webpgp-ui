@@ -4,7 +4,7 @@ const encryptionConfig = {
   preferredCompressionAlgorithm: openpgp.enums.compression.zlib,
   preferredSymmetricAlgorithm: openpgp.enums.symmetric.aes256,
   aeadProtect: true,
-  preferredAEADAlgorithm: openpgp.enums.aead.gcm
+  preferredAEADAlgorithm: openpgp.enums.aead.ocb
 };
 
 const elements = {
@@ -103,11 +103,18 @@ function updateTextEncryptionControls() {
 async function loadPublicKey() {
   try {
     const res = await fetch('/odara_pgpkey_PUBLIC.pgp');
+<<<<<<< HEAD
+=======
+
+>>>>>>> feature/use-aead
     if (!res.ok) {
       throw new Error(`公開鍵の取得に失敗しました (${res.status})`);
     }
+
     const binaryKey = new Uint8Array(await res.arrayBuffer());
+
     publicKey = await openpgp.readKey({ binaryKey });
+
     setError('');
     updateTextEncryptionControls();
     updateFileEncryptionControls();
