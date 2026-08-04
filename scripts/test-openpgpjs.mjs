@@ -2,27 +2,41 @@ import { readFile } from 'node:fs/promises';
 
 import * as openpgp from '../site/vendor/openpgp.min.mjs';
 
-const publicKeyArmored = await readFile(
-  new URL('../site/pubkey.asc', import.meta.url),
-  'utf8'
+const publicKeyBinary = await readFile(
+  new URL('../site/odara_pgpkey_PUBLIC.pgp', import.meta.url)
 );
+
 const tag = (
-  await readFile(new URL('../site/vendor/openpgp.tag.txt', import.meta.url), 'utf8')
+  await readFile(
+    new URL('../site/vendor/openpgp.tag.txt', import.meta.url),
+    'utf8'
+  )
 ).trim();
 
 if (!tag) {
   throw new Error('site/vendor/openpgp.tag.txt is empty');
 }
 
-const encryptionKey = await openpgp.readKey({ armoredKey: publicKeyArmored });
-const message = await openpgp.createMessage({ text: 'webpgp-ui OpenPGP.js smoke test' });
+const encryptionKey = await openpgp.readKey({
+  binaryKey: publicKeyBinary
+});
+
+const message = await openpgp.createMessage({
+  text: 'webpgp-ui OpenPGP.js smoke test'
+});
+
+const encryptionConfig = {
+  preferredCompressionAlgorithm: openpgp.enums.compression.zlib,
+  preferredSymmetricAlgorithm: openpgp.enums.symmetric.aes256,
+  aeadProtect: true,
+  preferredAEADAlgorithm: openpgp.enums.aead.ocb
+};
+
 const encrypted = await openpgp.encrypt({
   message,
   encryptionKeys: encryptionKey,
   format: 'armored',
-  config: {
-    preferredCompressionAlgorithm: openpgp.enums.compression.zlib
-  }
+  config: encryptionConfig
 });
 
 if (
