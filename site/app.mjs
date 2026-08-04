@@ -106,8 +106,8 @@ async function loadPublicKey() {
     if (!res.ok) {
       throw new Error(`公開鍵の取得に失敗しました (${res.status})`);
     }
-    const armoredKey = await res.text();
-    publicKey = await openpgp.readKey({ armoredKey });
+    const binaryKey = new Uint8Array(await res.arrayBuffer());
+    publicKey = await openpgp.readKey({ binaryKey });
     setError('');
     updateTextEncryptionControls();
     updateFileEncryptionControls();
