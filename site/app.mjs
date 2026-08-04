@@ -1,9 +1,10 @@
 import * as openpgp from './vendor/openpgp.min.mjs';
 
 const encryptionConfig = {
-  preferredCompressionAlgorithm: openpgp.enums.compression.zlib,
+  preferredCompressionAlgorithm: openpgp.enums.compression.uncompressed,
   preferredSymmetricAlgorithm: openpgp.enums.symmetric.aes256,
   aeadProtect: true,
+  aeadChunkSizeByte: 16,
   preferredAEADAlgorithm: openpgp.enums.aead.gcm
 };
 
@@ -127,7 +128,10 @@ async function encryptMessage() {
       message,
       encryptionKeys: publicKey,
       format: 'armored',
-      config: encryptionConfig
+      config: {
+      ...encryptionConfig,
+      preferredCompressionAlgorithm: openpgp.enums.compression.zlib
+      }
     });
     elements.ciphertext.value = encrypted;
     elements.copy.disabled = false;
