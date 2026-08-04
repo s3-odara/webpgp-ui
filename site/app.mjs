@@ -1,5 +1,12 @@
 import * as openpgp from './vendor/openpgp.min.mjs';
 
+const encryptionConfig = {
+  preferredCompressionAlgorithm: openpgp.enums.compression.zlib,
+  preferredSymmetricAlgorithm: openpgp.enums.symmetric.aes256,
+  aeadProtect: true,
+  preferredAEADAlgorithm: openpgp.enums.aead.ocb
+};
+
 const elements = {
   openpgpVersion: document.getElementById('openpgp-version'),
   error: document.getElementById('error'),
@@ -72,7 +79,7 @@ function setDownload(name, blob) {
 
 async function loadVersion() {
   try {
-    const res = await fetch('/vendor/openpgp.tag.txt', { cache: 'no-store' });
+    const res = await fetch('/vendor/openpgp.tag.txt');
     if (!res.ok) {
       return;
     }
@@ -95,7 +102,7 @@ function updateTextEncryptionControls() {
 
 async function loadPublicKey() {
   try {
-    const res = await fetch('/pubkey.asc', { cache: 'no-store' });
+    const res = await fetch('/odara_pgpkey_PUBLIC.pgp');
     if (!res.ok) {
       throw new Error(`公開鍵の取得に失敗しました (${res.status})`);
     }
@@ -120,9 +127,7 @@ async function encryptMessage() {
       message,
       encryptionKeys: publicKey,
       format: 'armored',
-      config: {
-        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
-      }
+      config: encryptionConfig
     });
     elements.ciphertext.value = encrypted;
     elements.copy.disabled = false;
@@ -388,9 +393,7 @@ async function encryptFiles() {
       message,
       encryptionKeys: publicKey,
       format: 'binary',
-      config: {
-        preferredCompressionAlgorithm: openpgp.enums.compression.zlib
-      }
+      config: encryptionConfig
     });
     const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
     const filename = `encrypted-${timestamp}.tar.gpg`;
